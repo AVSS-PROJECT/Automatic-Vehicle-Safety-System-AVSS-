@@ -1,14 +1,12 @@
-# Detection of vehicles and pothole using webcam in real time
-# No GUI components are added
 import cv2
 from ultralytics import YOLO
 import supervision as sv
-frame_width = 800
-frame_height = 500
+
+frame_width = 1280
+frame_height = 720
 
 def main():
-
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
 
@@ -24,29 +22,32 @@ def main():
         ret, frame = cap.read()
 
         result = model(frame, agnostic_nms=True)[0]
-        # print("Result",result)
         detections = sv.Detections.from_yolov8(result)
         
-  
-        labels = [
-            f"{'Vehicle' if class_id in range(1,6) and confidence > 0.5 else 'Pothole' if class_id == 0 and confidence > 0.6 else ''}"
-            for _, confidence, class_id, _
-            in detections
+        high_conf_detections = [
+            (x, confidence, class_id, class_name) 
+            for x, confidence, class_id, class_name 
+            in detections if confidence > 0.7 
         ]
+
+        labels = [
+            f"{class_name} {confidence:0.2f}"
+            for _, confidence, _, class_name 
+            in high_conf_detections
+        ]
+
+        print("High confidence detections:", high_conf_detections)
 
         frame = box_annotator.annotate(
             scene=frame, 
-            detections=detections, 
-            labels=labels
+            detections=high_conf_detections, 
+
         )
 
-        print(labels)
         cv2.imshow("yolov8", frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-
 if __name__ == "__main__":
     main()
-
